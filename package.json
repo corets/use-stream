@@ -18,7 +18,7 @@
     "/dist"
   ],
   "repository": "github:corets/use-stream",
-  "homepage": "https://corets.github.io/use-stream",
+  "homepage": "https://docs.corets.io/hooks/use-stream",
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org"
