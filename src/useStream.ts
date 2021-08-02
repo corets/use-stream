@@ -1,31 +1,23 @@
-import { useAsync } from "@corets/use-async"
-import { useEffect } from "react"
 import { UseStream } from "./types"
+import { useEffect } from "react"
+import { useAsync } from "@corets/use-async"
 
-export const useStream: UseStream = (action, interval, dependencies = []) => {
-  const asyncHandle = useAsync(action, dependencies)
+export const useStream: UseStream = (
+  producer,
+  ms,
+  dependencies = [] as any[]
+) => {
+  const async = useAsync(producer, dependencies)
 
   useEffect(() => {
-    const intervalHandle = setInterval(async () => {
-      if (
-        !asyncHandle.isLoading &&
-        !asyncHandle.isErrored &&
-        !asyncHandle.isCancelled
-      ) {
-        asyncHandle.refresh()
-      }
-    }, interval)
+    if (!async.isRunning() && !async.isCancelled()) {
+      const timeoutHandle = setTimeout(() => {
+        async.run()
+      }, ms)
 
-    return () => {
-      clearInterval(intervalHandle)
+      return () => clearTimeout(timeoutHandle)
     }
-  }, [
-    asyncHandle.isLoading,
-    asyncHandle.isErrored,
-    asyncHandle.isCancelled,
-    interval,
-    ...dependencies,
-  ])
+  }, [ms, async.isRunning(), async.isCancelled(), ...dependencies])
 
-  return asyncHandle
+  return async
 }

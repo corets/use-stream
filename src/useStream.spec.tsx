@@ -1,107 +1,133 @@
+import { createAsync, createAsyncState } from "@corets/async"
+import { createTimeout } from "@corets/promise-helpers"
 import { useStream } from "./useStream"
+import { createValue } from "@corets/value"
+import { useValue } from "@corets/use-value"
+import { render, screen, act, waitFor } from "@testing-library/react"
 import React from "react"
-import { act, render, screen } from "@testing-library/react"
-import { createTimeout } from "@corets/promise-helpers/dist"
+
+beforeAll(() => {
+  jest.useFakeTimers()
+})
+
+afterAll(() => {
+  jest.useRealTimers()
+})
 
 describe("useStream", () => {
-  beforeEach(() => jest.useFakeTimers())
-  afterEach(() => jest.useRealTimers())
-
-  it("streams data in a repeating interval", async () => {
-    let renders = 0
+  it("uses stream with an async producer instance", async () => {
     let counter = 0
-    let stream
+    const globalValue = createValue("foo")
+    const globalAsync = createAsync(async () => {
+      await createTimeout(100)
+
+      return ++counter
+    })
+    let renders = 0
 
     const Test = () => {
       renders++
-      stream = useStream(async () => {
-        await createTimeout(100)
-        counter++
 
-        return counter
-      }, 1000)
+      const value = useValue(globalValue)
+      const stream = useStream(globalAsync, 1000, [value.get()])
 
-      return (
-        <h1>
-          {renders},{stream.result ?? "undefined"},
-          {stream.isLoading
-            ? "loading"
-            : stream.isRefreshing
-            ? "refreshing"
-            : stream.isCancelled
-            ? "cancelled"
-            : "idle"}
-        </h1>
-      )
+      return <h1>{JSON.stringify(stream.getState())}</h1>
     }
 
     render(<Test />)
 
-    expect(screen.getByRole("heading")).toHaveTextContent("2,undefined,loading")
+    const target = screen.getByRole("heading")
 
-    act(() => {
-      jest.advanceTimersByTime(100)
-    })
-
-    expect(await screen.findByRole("heading")).toHaveTextContent("3,1,idle")
-
-    act(() => {
-      jest.advanceTimersByTime(500)
-    })
-
-    expect(await screen.findByRole("heading")).toHaveTextContent("3,1,idle")
-
-    act(() => {
-      jest.advanceTimersByTime(500)
-    })
-
-    expect(await screen.findByRole("heading")).toHaveTextContent(
-      "4,1,refreshing"
+    expect(renders).toBe(2)
+    expect(globalAsync.getState()).toEqual(
+      createAsyncState({ isRunning: true })
     )
 
     act(() => {
       jest.advanceTimersByTime(100)
     })
 
-    expect(await screen.findByRole("heading")).toHaveTextContent("5,2,idle")
-
-    act(() => {
-      jest.advanceTimersByTime(1100)
+    await waitFor(() => {
+      expect(renders).toBe(3)
+      expect(target).toHaveTextContent(
+        JSON.stringify(createAsyncState({ result: 1 }))
+      )
     })
 
-    expect(await screen.findByRole("heading")).toHaveTextContent("7,3,idle")
-
     act(() => {
-      stream.cancel()
       jest.advanceTimersByTime(500)
     })
 
-    expect(await screen.findByRole("heading")).toHaveTextContent(
-      "8,3,cancelled"
+    expect(renders).toBe(3)
+    expect(target).toHaveTextContent(
+      JSON.stringify(createAsyncState({ result: 1 }))
     )
 
     act(() => {
-      stream.cancel()
-      jest.advanceTimersByTime(3000)
+      jest.advanceTimersByTime(500)
     })
 
-    expect(await screen.findByRole("heading")).toHaveTextContent(
-      "8,3,cancelled"
+    expect(renders).toBe(4)
+    expect(target).toHaveTextContent(
+      JSON.stringify(createAsyncState({ result: 1, isRunning: true }))
     )
 
     act(() => {
-      stream.refresh()
-      jest.advanceTimersByTime(50)
+      jest.advanceTimersByTime(100)
     })
 
-    expect(await screen.findByRole("heading")).toHaveTextContent(
-      "9,3,refreshing"
+    await waitFor(() => {
+      expect(renders).toBe(5)
+      expect(target).toHaveTextContent(
+        JSON.stringify(createAsyncState({ result: 2 }))
+      )
+    })
+
+    act(() => {
+      jest.advanceTimersByTime(500)
+    })
+
+    expect(renders).toBe(5)
+    expect(target).toHaveTextContent(
+      JSON.stringify(createAsyncState({ result: 2 }))
     )
 
     act(() => {
-      jest.advanceTimersByTime(50)
+      globalAsync.cancel()
     })
 
-    expect(await screen.findByRole("heading")).toHaveTextContent("10,4,idle")
+    expect(renders).toBe(6)
+    expect(target).toHaveTextContent(
+      JSON.stringify(createAsyncState({ result: 2, isCancelled: true }))
+    )
+
+    act(() => {
+      jest.advanceTimersByTime(2000)
+    })
+
+    expect(renders).toBe(6)
+    expect(target).toHaveTextContent(
+      JSON.stringify(createAsyncState({ result: 2, isCancelled: true }))
+    )
+
+    act(() => {
+      globalAsync.run()
+    })
+
+    expect(renders).toBe(7)
+    expect(target).toHaveTextContent(
+      JSON.stringify(createAsyncState({ result: 2, isRunning: true }))
+    )
+
+    act(() => {
+      jest.advanceTimersByTime(100)
+    })
+
+    await waitFor(() => {
+      expect(renders).toBe(8)
+      expect(target).toHaveTextContent(
+        JSON.stringify(createAsyncState({ result: 3 }))
+      )
+    })
   })
 })

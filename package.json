@@ -38,10 +38,13 @@
     "react-dom": "^16.0.0 || ^17.0.0"
   },
   "dependencies": {
-    "@corets/use-async": "^0.1.0"
+    "@corets/async": "^0.1.0",
+    "@corets/use-async": "^0.2.0"
   },
   "devDependencies": {
     "@corets/promise-helpers": "^0.2.0",
+    "@corets/use-value": "^0.1.2",
+    "@corets/value": "^0.2.2",
     "@testing-library/jest-dom": "^5.14.1",
     "@testing-library/react": "^12.0.0",
     "@types/jest": "^26.0.24",

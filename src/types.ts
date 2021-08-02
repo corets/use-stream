@@ -1,7 +1,7 @@
-import { Async, AsyncProducer } from "@corets/use-async"
+import { AsyncProducerWithoutArgs, ObservableAsync } from "@corets/async"
 
 export type UseStream = <TResult>(
-  initializer: AsyncProducer<TResult> | TResult,
-  interval: number,
+  producer: ObservableAsync<TResult> | AsyncProducerWithoutArgs<TResult>,
+  ms: number,
   dependencies?: any[]
-) => Async<TResult>
+) => ObservableAsync<TResult>
